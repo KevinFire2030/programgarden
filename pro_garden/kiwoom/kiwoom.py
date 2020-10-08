@@ -1,6 +1,7 @@
-from PyQt5.QAxContainer import *
+from PyQt5.QAxContainer import QAxWidget
 from PyQt5.QtCore import *
 from pro_garden.config.errorCode import *
+
 
 class Kiwoom(QAxWidget):
     def __init__(self):
@@ -10,8 +11,7 @@ class Kiwoom(QAxWidget):
 
         ####### event loop를 실행하기 위한 변수모음
         self.login_event_loop = QEventLoop()  # 로그인 요청용 이벤트루프
-        self.detail_account_info_event_loop = None
-        self.detail_account_mystock_event_loop = QEventLoop()
+        self.detail_account_info_event_loop = QEventLoop()
 
         #########################################
 
@@ -20,6 +20,11 @@ class Kiwoom(QAxWidget):
         self.use_money = 0
         self.use_money_percent = 0.5
         self.account_stock_dict = {}
+
+        #########################################
+
+        ####### 스크린 번호 모음
+        self.screen_my_info = "2000"
 
         #########################################
 
@@ -64,9 +69,8 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("SetInputValue(QString, QString)", "빌밀번호", "0000")
         self.dynamicCall("SetInputValue(QString, QString)", "비밀번호입력매체구분", "00")
         self.dynamicCall("SetInputValue(QString, QString)", "조회구분", "2")
-        self.dynamicCall("CommRqData(QString, QString, int, QString)", "예수금상세현황요청", "opw00001", "0", "2000")
+        self.dynamicCall("CommRqData(QString, QString, int, QString)", "예수금상세현황요청", "opw00001", "0", self.screen_my_info)
 
-        self.detail_account_info_event_loop = QEventLoop()
         self.detail_account_info_event_loop.exec_()
 
     def detail_account_mystock(self, sPrevNext="0"):
@@ -75,9 +79,9 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("SetInputValue(QString, QString)", "빌밀번호", "0000")
         self.dynamicCall("SetInputValue(QString, QString)", "비밀번호입력매체구분", "00")
         self.dynamicCall("SetInputValue(QString, QString)", "조회구분", "2")
-        self.dynamicCall("CommRqData(QString, QString, int, QString)", "계좌평가잔고내역요청", "opw00018", sPrevNext, "2000")
+        self.dynamicCall("CommRqData(QString, QString, int, QString)", "계좌평가잔고내역요청", "opw00018", sPrevNext, self.screen_my_info)
 
-        self.detail_account_mystock_event_loop.exec_()
+        self.detail_account_info_event_loop.exec_()
 
     def trdata_slot(self, sScrNo, sRQName, sTrCode, sRecordName, sPrevNext):
         """
@@ -157,4 +161,4 @@ class Kiwoom(QAxWidget):
             if sPrevNext == "2":
                 self.detail_account_mystock(sPrevNext="2")
             else:
-                self.detail_account_mystock_event_loop.exit()
+                self.detail_account_info_event_loop.exit()
