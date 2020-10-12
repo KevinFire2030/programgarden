@@ -1,6 +1,7 @@
 from PyQt5.QAxContainer import QAxWidget
 from PyQt5.QtCore import *
 from config.errorCode import *
+from PyQt5.QtTest import *
 
 
 class Kiwoom(QAxWidget):
@@ -12,6 +13,7 @@ class Kiwoom(QAxWidget):
         ####### event loop를 실행하기 위한 변수모음
         self.login_event_loop = QEventLoop()  # 로그인 요청용 이벤트루프
         self.detail_account_info_event_loop = QEventLoop()
+        self.calculator_event_loop = QEventLoop()
 
         #########################################
 
@@ -21,6 +23,7 @@ class Kiwoom(QAxWidget):
         self.use_money_percent = 0.5
         self.account_stock_dict = {}
         self.not_account_stock_dict = {}
+        self.calcul_data = []
 
         #########################################
 
@@ -222,10 +225,70 @@ class Kiwoom(QAxWidget):
 
             self.detail_account_info_event_loop.exit()
         elif sRQName == "주식일봉차트조회요청":
-            print("일봉데이터 요청")
+            code = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName, 0, "종목코드")
+            code = code.strip()
+            print("%s 일봉데이터 요청" % code)
 
+            cnt = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
+            print(cnt)
+
+            # 한번에 가져오는 함수
+            # data = self.dynamicCall("GetCommDataEx(QString, QString)", sTrCode, sRQName)
+
+            # 한번 조회하면 600일치까지 일봉데이타를 받을 수 있다.
+            for i in range(cnt):
+                data = []   # 저장할 리스트
+
+                current_price = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName, i, "현재가")
+                value = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "거래량")
+                trading_value = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "거래대금")
+                date = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "일자")
+                start_price = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "시가")
+                high_price = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "고가")
+                low_price = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "저가")
+
+                data.append("")
+                data.append(current_price.strip())
+                data.append(value.strip())
+                data.append(trading_value.strip())
+                data.append(date.strip())
+                data.append(start_price.strip())
+                data.append(high_price.strip())
+                data.append(low_price.trip())
+                data.append("")
+
+                self.calcul_data.append(data.copy())
+
+            print(self.calcul_data)
+
+            if sPrevNext == "2":
+                self.day_kiwoom_db(code=code, sPrevNext=sPrevNext)
+            else:
+                print("총 일수 %s" % len(self.calcul_data))
+
+                pass_success = True
+
+                # 120일 이평선을 그릴만큼의 데이터가 있는지 확인
+                if self.calcul_data == None or len(self.calcul_data) < 120:
+                    pass_success = False
+                else:
+                    # 데이터가 120일 이상 있으면,
+                    total_price = 0
+                    for value in self.calcul_data[:120]:
+                        total_price += value[1]
+
+                    moving_average_price = total_price / 120
+
+                    if int(self.calcul_data[0][7]) <= moving_average_price and \
+                        int(self.calcul_data[0][6] >= moving_average_price):
+                        print("오늘 주가가 120 이평선에 걸쳐있는지 확인")
+
+
+                self.calculator_event_loop.exit()
 
     def day_kiwoom_db(self, code=None, date=None, sPrevNext="0"):
+        QTest.qWait(3600)
+
         self.dynamicCall("SetInputValue(QString, QString)", "종목코드", code)
         self.dynamicCall("SetInputValue(QString, QString)", "수정주가구분", "1")
         if date != None:
@@ -233,6 +296,8 @@ class Kiwoom(QAxWidget):
 
         self.dynamicCall("CommRqData(QString, QString, int, QString)",\
                          "주식일봉차트조회요청", "opt10081", sPrevNext, self.screen_calculation_stock)
+
+        self.calculator_event_loop.exec_()
 
     def get_code_list_by_market(self, market_code):
         code_list = self.dynamicCall("GetCodeListByMarket(QString)", market_code)
