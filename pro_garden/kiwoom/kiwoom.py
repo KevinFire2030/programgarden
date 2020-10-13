@@ -1,6 +1,6 @@
 from PyQt5.QAxContainer import QAxWidget
 from PyQt5.QtCore import *
-from config.errorCode import *
+from pro_garden.config.errorCode import *
 from PyQt5.QtTest import *
 
 
@@ -224,6 +224,7 @@ class Kiwoom(QAxWidget):
                 print("미체결 종목이 없습니다.")
 
             self.detail_account_info_event_loop.exit()
+
         elif sRQName == "주식일봉차트조회요청":
             code = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName, 0, "종목코드")
             code = code.strip()
@@ -269,7 +270,7 @@ class Kiwoom(QAxWidget):
                 pass_success = True
 
                 # 120일 이평선을 그릴만큼의 데이터가 있는지 확인
-                if self.calcul_data == None or len(self.calcul_data) < 120:
+                if self.calcul_data is None or len(self.calcul_data) < 120:
                     pass_success = False
                 else:
                     # 데이터가 120일 이상 있으면,
@@ -279,9 +280,62 @@ class Kiwoom(QAxWidget):
 
                     moving_average_price = total_price / 120
 
-                    if int(self.calcul_data[0][7]) <= moving_average_price and \
+                    # 1. 오늘자 주가가 120 이평선에 걸쳐있는지 확인
+                    bottom_stock_price = False
+                    check_price = None
+
+                    if int(self.calcul_data[0][7]) <= moving_average_price and\
                         int(self.calcul_data[0][6] >= moving_average_price):
                         print("오늘 주가가 120 이평선에 걸쳐있는지 확인")
+                        bottom_stock_price = True
+                        check_price = int(self.calcul_data[0][6])
+
+                    # 2. 과거 일봉들이 120일 이평선보다 밑에 있는지 확인
+                    prev_low_price = 0  # 과거 일봉 주가
+                    if bottom_stock_price is True:
+                        moving_average_price_prev = 0
+                        price_top_moving = False    # 주가가 이평선보다 위에 위치하는가?
+
+                        idx = 1
+                        while True:
+                            if len(self.calcul_data[idx:]) < 120:   # 120일자가 있는지 계속 확인
+                                print("120일치가 없음")
+                                break
+
+                            total_price = 0
+                            for value in self.calcul_data[idx:120+idx]:
+                                total_price += int(value[1])
+                            moving_average_price_prev = total_price / 120
+
+                            if moving_average_price_prev <= int(self.calcul_data[idx][6]) and idx <= 20:
+                                print("20일 동안 주가가 이평선과 같거나 위에 있으면 조건 탈락")
+                                price_top_moving = False
+                                break
+                            elif int(self.calcul_data[idx][7]) > moving_average_price_prev and idx > 20:
+                                print("120일 이평선 위에 있는 일봉 확인")
+                                price_top_moving = True
+                                prev_low_price = int(self.calcul_data[idx][7])  # 이평선위의 일봉 저가 저장
+                                break
+
+                            idx += 1
+
+                            # 해당 부분 이평선이 가장 최근 일자의 이평선 가격보다 낮은지 확인
+                            if price_top_moving is True:
+                                if moving_average_price > moving_average_price_prev and check_price > prev_low_price:
+                                    print("포착된 이평선의 가격이 오늘자(최근일자) 이평선 가격보다 낮은 것 확임됨")
+                                    print("포착된 부분의 일봉 저가가 오늘자 일봉의 고가보다 낮은지 확임됨")
+                                    pass_success = True
+
+                    if pass_success is True:
+                        pass
+
+
+
+
+
+
+
+
 
 
                 self.calculator_event_loop.exit()
@@ -291,19 +345,20 @@ class Kiwoom(QAxWidget):
 
         self.dynamicCall("SetInputValue(QString, QString)", "종목코드", code)
         self.dynamicCall("SetInputValue(QString, QString)", "수정주가구분", "1")
-        if date != None:
+        if date is not None:
             self.dynamicCall("SetInputValue(QString, QString)", "기준일자", date)
 
-        self.dynamicCall("CommRqData(QString, QString, int, QString)",\
+        self.dynamicCall("CommRqData(QString, QString, int, QString)",
                          "주식일봉차트조회요청", "opt10081", sPrevNext, self.screen_calculation_stock)
 
+        # event loop로 calculator_fnc의 for loop를 멈춰야 함
         self.calculator_event_loop.exec_()
 
     def get_code_list_by_market(self, market_code):
         code_list = self.dynamicCall("GetCodeListByMarket(QString)", market_code)
         code_list = code_list.split(";")[:-1]
 
-        return code_list
+        return code_list    # 리스트로 종목코드 저장
 
     def calculator_fnc(self):
         code_list = self.get_code_list_by_market("10")
