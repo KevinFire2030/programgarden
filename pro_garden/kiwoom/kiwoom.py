@@ -319,24 +319,26 @@ class Kiwoom(QAxWidget):
 
                             idx += 1
 
-                            # 해당 부분 이평선이 가장 최근 일자의 이평선 가격보다 낮은지 확인
-                            if price_top_moving is True:
-                                if moving_average_price > moving_average_price_prev and check_price > prev_low_price:
-                                    print("포착된 이평선의 가격이 오늘자(최근일자) 이평선 가격보다 낮은 것 확임됨")
-                                    print("포착된 부분의 일봉 저가가 오늘자 일봉의 고가보다 낮은지 확임됨")
-                                    pass_success = True
+                        # 해당 부분 이평선이 가장 최근 일자의 이평선 가격보다 낮은지 확인
+                        if price_top_moving is True:
+                            if moving_average_price > moving_average_price_prev and check_price > prev_low_price:
+                                print("포착된 이평선의 가격이 오늘자(최근일자) 이평선 가격보다 낮은 것 확임됨")
+                                print("포착된 부분의 일봉 저가가 오늘자 일봉의 고가보다 낮은지 확임됨")
+                                pass_success = True
 
-                    if pass_success is True:
-                        pass
+                if pass_success is True:
+                    print("조건부 통과됨")
 
+                    code_nm = self.dynamicCall("GetMasterCodeName(QString)", code)
 
+                    f = open("files/condition_stcok.txt", "a", encoding="utf8")
+                    f.write("%s\t%s\t%s\n" % (code, code_nm, str(self.calcul_data[0][1])))
+                    f.close()
 
+                elif pass_success is False:
+                    print("조건부 통과 못함")
 
-
-
-
-
-
+                self.calcul_data.clear()
 
                 self.calculator_event_loop.exit()
 
