@@ -1,3 +1,5 @@
+import os
+
 from PyQt5.QAxContainer import QAxWidget
 from PyQt5.QtCore import *
 from pro_garden.config.errorCode import *
@@ -24,12 +26,15 @@ class Kiwoom(QAxWidget):
         self.account_stock_dict = {}
         self.not_account_stock_dict = {}
         self.calcul_data = []
+        self.portfolio_stock_dict = {}
 
         #########################################
 
         ####### 스크린 번호 모음
         self.screen_my_info = "2000"
         self.screen_calculation_stock = "4000"
+        self.screen_real_stock = "5000"
+        self.screen_trade_stock = "6000"
 
         #########################################
 
@@ -41,7 +46,11 @@ class Kiwoom(QAxWidget):
         self.detail_account_info()
         self.detail_account_mystock()
         self.not_concluded_account()
-        self.calculator_fnc()
+        # self.calculator_fnc()
+
+        self.read_code()
+        self.screen_number_setting()    # 스크린 번호를 할당
+
         #########################################
 
     def get_ocx_instance(self):
@@ -255,19 +264,19 @@ class Kiwoom(QAxWidget):
                 data.append(date.strip())
                 data.append(start_price.strip())
                 data.append(high_price.strip())
-                data.append(low_price.trip())
+                data.append(low_price.strip())
                 data.append("")
 
                 self.calcul_data.append(data.copy())
 
-            print(self.calcul_data)
+            # print(self.calcul_data)
 
-            if sPrevNext == "2":
+            if sPrevNext == "10":
                 self.day_kiwoom_db(code=code, sPrevNext=sPrevNext)
             else:
                 print("총 일수 %s" % len(self.calcul_data))
 
-                pass_success = True
+                pass_success = False
 
                 # 120일 이평선을 그릴만큼의 데이터가 있는지 확인
                 if self.calcul_data is None or len(self.calcul_data) < 120:
@@ -276,7 +285,7 @@ class Kiwoom(QAxWidget):
                     # 데이터가 120일 이상 있으면,
                     total_price = 0
                     for value in self.calcul_data[:120]:
-                        total_price += value[1]
+                        total_price += int(value[1])
 
                     moving_average_price = total_price / 120
 
@@ -284,8 +293,7 @@ class Kiwoom(QAxWidget):
                     bottom_stock_price = False
                     check_price = None
 
-                    if int(self.calcul_data[0][7]) <= moving_average_price and\
-                        int(self.calcul_data[0][6] >= moving_average_price):
+                    if int(self.calcul_data[0][7]) <= moving_average_price <= int(self.calcul_data[0][6]):
                         print("오늘 주가가 120 이평선에 걸쳐있는지 확인")
                         bottom_stock_price = True
                         check_price = int(self.calcul_data[0][6])
@@ -331,7 +339,7 @@ class Kiwoom(QAxWidget):
 
                     code_nm = self.dynamicCall("GetMasterCodeName(QString)", code)
 
-                    f = open("files/condition_stcok.txt", "a", encoding="utf8")
+                    f = open("files/condition_stock.txt", "a", encoding="utf8")
                     f.write("%s\t%s\t%s\n" % (code, code_nm, str(self.calcul_data[0][1])))
                     f.close()
 
@@ -339,11 +347,10 @@ class Kiwoom(QAxWidget):
                     print("조건부 통과 못함")
 
                 self.calcul_data.clear()
-
                 self.calculator_event_loop.exit()
 
     def day_kiwoom_db(self, code=None, date=None, sPrevNext="0"):
-        QTest.qWait(3600)
+        QTest.qWait(500)
 
         self.dynamicCall("SetInputValue(QString, QString)", "종목코드", code)
         self.dynamicCall("SetInputValue(QString, QString)", "수정주가구분", "1")
@@ -371,6 +378,74 @@ class Kiwoom(QAxWidget):
             print("%s / %s : KOSDAQ Stock Code : %s is updating..." % (idx+1, len(code_list), code))
 
             self.day_kiwoom_db(code=code)
+
+    def read_code(self):
+        print("저장된 파일을 읽습니다.")
+        if os.path.exists("files/condition_stock.txt"):
+            f = open("files/condition_stock.txt", "r", encoding="utf8")
+
+            lines = f.readlines()
+            for line in lines:
+                if line != "":
+                    ls = line.split("\t")
+
+                    stock_code = ls[0]
+                    stock_name = ls[1]
+                    stock_price = int(ls[2].split("\n")[0])
+                    stock_price = abs(stock_price)
+
+                    self.portfolio_stock_dict.update({stock_code: {"종목명": stock_name, "현재가": stock_price}})
+            f.close()
+
+            print(self.portfolio_stock_dict)
+
+    def screen_number_setting(self):
+        screen_overwirte = []
+
+        # 계좌평가잔고내역에 있는 종목들
+        for code in self.account_stock_dict.keys():
+            if code not in screen_overwirte:
+                screen_overwirte.append(code)
+
+        # 미체결에 있는 종목들
+        for order_no in self.not_account_stock_dict.keys():
+            code = self.not_account_stock_dict[order_no]['종목코드']
+            if code not in screen_overwirte:
+                screen_overwirte.append(code)
+
+        # 포트폴리오에 담겨있는 종목들
+        for code in self.portfolio_stock_dict.keys():
+            if code not in screen_overwirte:
+                screen_overwirte.append(code)
+
+        # 스크린번호 할당
+        cnt = 1
+        for code in screen_overwirte:
+            temp_screen = int(self.screen_real_stock)
+            trade_screen = int(self.screen_trade_stock)
+
+            if(cnt % 50) == 0:
+                temp_screen += 1
+                self.screen_real_stock = str(temp_screen)
+
+            if(cnt % 50) == 0:
+                trade_screen += 1
+                self.screen_trade_stock = str(trade_screen)
+
+            if code in self.portfolio_stock_dict.keys():
+                self.portfolio_stock_dict[code].update({"스크린번호": str(self.screen_real_stock)})
+                self.portfolio_stock_dict[code].update({"주문용스크린번호": str(self.screen_trade_stock)})
+
+            elif code not in self.portfolio_stock_dict.keys():
+
+                self.portfolio_stock_dict.update(
+                    {code: {"스크린번호": str(self.screen_real_stock), "주문용스크린번호": str(self.screen_trade_stock)}})
+
+            cnt += 1
+
+        print(self.portfolio_stock_dict)
+
+
 
 
 
