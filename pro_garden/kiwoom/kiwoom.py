@@ -540,6 +540,7 @@ class Kiwoom(QAxWidget):
                     print("%s %s" % ("매수취소 한다.", sCode))
                 elif not_quantity == 0:
                     del self.not_account_stock_dict[order_num]
+                    print("WooHoo")
 
 
 
