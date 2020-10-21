@@ -6,6 +6,7 @@ from pro_garden.config.errorCode import *
 from PyQt5.QtTest import *
 from pro_garden.config.kiwoomType import *
 
+
 class Kiwoom(QAxWidget):
     def __init__(self):
         super().__init__()
@@ -44,7 +45,7 @@ class Kiwoom(QAxWidget):
         ######### 초기 셋팅 함수들 바로 실행
         self.get_ocx_instance()  # OCX 방식을 파이썬에 사용할 수 있게 변환해 주는 함수
         self.event_slots()  # 키움과 연결하기 위한 시그널 / 슬롯 모음
-        self.real_event_slots() # 실시간 이벤트 슬롯
+        self.real_event_slots()  # 실시간 이벤트 슬롯
         self.signal_login_commConnect()  # 로그인 요청 시그널 포함
         self.get_account_info()
         self.detail_account_info()
@@ -58,13 +59,12 @@ class Kiwoom(QAxWidget):
         #########################################
 
         # 실시간 수신 관련 함수
-        self.dynamicCall("SetRealReg(QString, QString, QString, QString)", self.screen_start_stop_real, '',
-                         self.realType.REALTYPE['장시작시간']['장운영구분'], "0")
+        self.dynamicCall("SetRealReg(QString, QString, QString, QString)", self.screen_start_stop_real, '', self.realType.REALTYPE['장시작시간']['장운영구분'], "0")
 
         for code in self.portfolio_stock_dict.keys():
             screen_num = self.portfolio_stock_dict[code]['스크린번호']
             fids = self.realType.REALTYPE['주식체결']['체결시간']
-            self.dynamicCall("SetRealReg(QString, QString, QString, QString", screen_num, fids, "1")
+            self.dynamicCall("SetRealReg(QString, QString, QString, QString", screen_num, code, fids, "1")
             print("실시간 등록 코드: %s, 스크린 번호: %s, fid 번호: %s" % (code, screen_num, fids))
 
     def get_ocx_instance(self):
@@ -463,6 +463,7 @@ class Kiwoom(QAxWidget):
     def realdata_slot(self, sCode, sRealType, sRealData):
         if sRealType == "장시작시간":
             fid = self.realType.REALTYPE[sRealType]['장운영구분']  # (0:장시작전, 2:장종료전(20분), 3:장시작, 4,8:장종료(30분), 9:장마감)
+
             value = self.dynamicCall("GetCommRealData(QString, int)", sCode, fid)
 
             if value == '0':
