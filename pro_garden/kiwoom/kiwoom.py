@@ -29,6 +29,7 @@ class Kiwoom(QAxWidget):
         self.not_account_stock_dict = {}
         self.calcul_data = []
         self.portfolio_stock_dict = {}
+        self.jango_dict = {}
 
         #########################################
 
@@ -477,9 +478,67 @@ class Kiwoom(QAxWidget):
                 print("3시 30분 장 종료")
                 
         elif sRealType == "주식체결":
-            print(sCode)
-        
+            a = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['체결시간'])  # 출력 HHMMSS
+            b = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['현재가'])  # 출력 : +(-)2520
+            b = abs(int(b))
+            c = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['전일대비'])  # 출력 : +(-)2520
+            c = abs(int(c))
+            d = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['등락율'])  # 출력 : +(-)12.98
+            d = float(d)
+            e = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['(최우선)매도호가'])  # 출력 : +(-)2520
+            e = abs(int(e))
+            f = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['(최우선)매수호가'])  # 출력 : +(-)2515
+            f = abs(int(f))
+            g = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['거래량'])  # 출력 : +240124  매수일때, -2034 매도일 때
+            g = abs(int(g))
+            h = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['누적거래량'])  # 출력 : 240124
+            h = abs(int(h))
+            i = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['고가'])  # 출력 : +(-)2530
+            i = abs(int(i))
+            j = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['시가'])  # 출력 : +(-)2530
+            j = abs(int(j))
+            k = self.dynamicCall("GetCommRealData(QString, int)", sCode, self.realType.REALTYPE[sRealType]['저가'])  # 출력 : +(-)2530
+            k = abs(int(k))
 
+            if sCode not in self.portfolio_stock_dict:
+                self.portfolio_stock_dict.update({sCode: {}})
+
+            self.portfolio_stock_dict[sCode].update({"체결시간": a})
+            self.portfolio_stock_dict[sCode].update({"현재가": b})
+            self.portfolio_stock_dict[sCode].update({"전일대비": c})
+            self.portfolio_stock_dict[sCode].update({"등락율": d})
+            self.portfolio_stock_dict[sCode].update({"(최우선)매도호가": e})
+            self.portfolio_stock_dict[sCode].update({"(최우선)매수호가": f})
+            self.portfolio_stock_dict[sCode].update({"거래량": g})
+            self.portfolio_stock_dict[sCode].update({"누적거래량": h})
+            self.portfolio_stock_dict[sCode].update({"고가": i})
+            self.portfolio_stock_dict[sCode].update({"시가": j})
+            self.portfolio_stock_dict[sCode].update({"저가": k})
+
+            print(self.portfolio_stock_dict[sCode])
+
+            # 계좌잔고평가내역(이전에 매수한 종목)에 있고 오늘 산 잔고에는 없을 경우
+            if sCode in self.account_stock_dict.keys() and sCode not in self.jango_dict.key():
+                print("%s %s" % ("신규매도를 한다.", sCode))
+
+            elif sCode in self.jango_dict.keys():
+                print("%s %s" % ("신규매도를 한다2.", sCode))
+
+            elif d > 2.0 and sCode not in self.jango_dict.keys():
+                print("%s %s" % ("신규매수를 한다.", sCode))
+
+            not_trade_list = list(self.not_account_stock_dict)
+
+            for order_num in not_trade_list:
+                code = self.not_account_stock_dict[order_num]["종목코드"]
+                trade_price = self.not_account_stock_dict[order_num]['주문가격']
+                not_quantity = self.not_account_stock_dict[order_num]['미체결수량']
+                order_gubun = self.not_account_stock_dict[order_num]['주문구분']
+
+                if order_gubun == "매수" and not_quantity > 0 and e > trade_price:
+                    print("%s %s" % ("매수취소 한다.", sCode))
+                elif not_quantity == 0:
+                    del self.not_account_stock_dict[order_num]
 
 
 
