@@ -16,10 +16,14 @@ class Kiwoom(QAxWidget):
         ####### event loop를 실행하기 위한 변수모음
         self.login_event_loop = QEventLoop()  # 로그인 요청용 이벤트루프
 
+        ####### 변수모음
+        self.account_num = None
+
         ######### 초기 셋팅 함수들 바로 실행
         self.get_ocx_instance()  # OCX 방식을 파이썬에 사용할 수 있게 변환해 주는 함수
         self.event_slots()  # 키움과 연결하기 위한 시그널 / 슬롯 모음
         self.signal_login_commConnect()  # 로그인 요청 시그널 포함
+        self.get_account_info()
 
     def get_ocx_instance(self):
         self.setControl("KHOPENAPI.KHOpenAPICtrl.1")  # 레지스트리에 저장된 api 모듈 불러오기
@@ -40,4 +44,11 @@ class Kiwoom(QAxWidget):
 
         self.login_event_loop.exec_()  # 이벤트루프 실행
 
+    def get_account_info(self):
+        account_list = self.dynamicCall("GetLoginInfo(QString)", "ACCLIST")
+        account_num = account_list.split(';')
+        self.account_num = account_num
 
+        # self.logging.logger.debug("계좌번호 : %s" % account_num)
+        # 계좌번호: [' 선옵 7014194731', '상시 8049229611', '대주? 8049229711', '']
+        print("계좌번호 : %s" % account_num)
