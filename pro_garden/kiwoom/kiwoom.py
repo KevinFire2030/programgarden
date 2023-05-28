@@ -33,6 +33,8 @@ class Kiwoom(QAxWidget):
         ####### 스크린 번호 모음
         self.screen_my_info = "2000"
         self.screen_calculation_stock = "4000"
+        self.screen_trade_stock = "6000"
+        self.screen_start_stop_real = "1000"  # 장 시작/종료 실시간 스크린번호
 
         ######### 초기 셋팅 함수들 바로 실행
         self.get_ocx_instance()  # OCX 방식을 파이썬에 사용할 수 있게 변환해 주는 함수
@@ -43,6 +45,7 @@ class Kiwoom(QAxWidget):
         self.detail_account_mystock()
         self.not_concluded_account()
         self.read_code()
+        self.screen_number_setting()  # 스크린 번호를 할당
 
 
 
@@ -432,7 +435,49 @@ class Kiwoom(QAxWidget):
             print(self.portfolio_stock_dict)
 
 
+    def screen_number_setting(self):
+        screen_overwrite = []
 
+        # 계좌평가잔고내역에 있는 종목들
+        for code in self.account_stock_dict.keys():
+            if code not in screen_overwrite:
+                screen_overwrite.append(code)
+
+        # 미체결에 있는 종목들
+        for order_no in self.not_account_stock_dict.keys():
+            code = self.not_account_stock_dict[order_no]['종목코드']
+            if code not in screen_overwrite:
+                screen_overwrite.append(code)
+
+        # 포트폴리오에 담겨있는 종목들
+        for code in self.portfolio_stock_dict.keys():
+            if code not in screen_overwrite:
+                screen_overwrite.append(code)
+
+        # 스크린번호 할당
+        cnt = 1
+        for code in screen_overwrite:
+            temp_screen = int(self.screen_real_stock)
+            trade_screen = int(self.screen_trade_stock)
+
+            if(cnt % 50) == 0:
+                temp_screen += 1
+                self.screen_real_stock = str(temp_screen)
+
+            if(cnt % 50) == 0:
+                trade_screen += 1
+                self.screen_trade_stock = str(trade_screen)
+
+            if code in self.portfolio_stock_dict.keys():
+                self.portfolio_stock_dict[code].update({"스크린번호": str(self.screen_real_stock)})
+                self.portfolio_stock_dict[code].update({"주문용스크린번호": str(self.screen_trade_stock)})
+
+            elif code not in self.portfolio_stock_dict.keys():
+
+                self.portfolio_stock_dict.update(
+                    {code: {"스크린번호": str(self.screen_real_stock), "주문용스크린번호": str(self.screen_trade_stock)}})
+
+            cnt += 1
 
 
 
