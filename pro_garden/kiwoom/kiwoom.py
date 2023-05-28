@@ -27,6 +27,7 @@ class Kiwoom(QAxWidget):
         self.account_stock_dict = {}
         self.not_account_stock_dict = {}
         self.calcul_data = []
+        self.portfolio_stock_dict = {}
 
 
         ####### 스크린 번호 모음
@@ -41,6 +42,7 @@ class Kiwoom(QAxWidget):
         self.detail_account_info()
         self.detail_account_mystock()
         self.not_concluded_account()
+        self.read_code()
 
 
 
@@ -409,7 +411,25 @@ class Kiwoom(QAxWidget):
 
             self.day_kiwoom_db(code=code)
 
+    def read_code(self):
+        print("저장된 파일을 읽습니다.")
+        if os.path.exists("files/condition_stock.txt"):
+            f = open("files/condition_stock.txt", "r", encoding="utf8")
 
+            lines = f.readlines()
+            for line in lines:
+                if line != "":
+                    ls = line.split("\t")
+
+                    stock_code = ls[0]
+                    stock_name = ls[1]
+                    stock_price = int(ls[2].split("\n")[0])
+                    stock_price = abs(stock_price)
+
+                    self.portfolio_stock_dict.update({stock_code: {"종목명": stock_name, "현재가": stock_price}})
+            f.close()
+
+            print(self.portfolio_stock_dict)
 
 
 
