@@ -243,6 +243,20 @@ class Kiwoom(QAxWidget):
 
         self.detail_account_info_event_loop.exec_()
 
+    def get_code_list_by_market(self, market_code):
+        code_list = self.dynamicCall("GetCodeListByMarket(QString)", market_code)
+        code_list = code_list.split(";")[:-1]
+
+        return code_list  # 리스트로 종목코드 저장
+
+    def calculator_fnc(self):
+        code_list = self.get_code_list_by_market("10")
+        print("코스닥 갯수 %s" % len(code_list))
+
+
+
+
+
 
 
 
