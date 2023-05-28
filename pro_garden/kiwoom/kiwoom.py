@@ -16,6 +16,7 @@ class Kiwoom(QAxWidget):
         ####### event loop를 실행하기 위한 변수모음
         self.login_event_loop = QEventLoop()  # 로그인 요청용 이벤트루프
         self.detail_account_info_event_loop = QEventLoop()
+        self.calculator_event_loop = QEventLoop()
 
         ####### 변수모음
         self.account_num = None
@@ -29,6 +30,7 @@ class Kiwoom(QAxWidget):
 
         ####### 스크린 번호 모음
         self.screen_my_info = "2000"
+        self.screen_calculation_stock = "4000"
 
         ######### 초기 셋팅 함수들 바로 실행
         self.get_ocx_instance()  # OCX 방식을 파이썬에 사용할 수 있게 변환해 주는 함수
@@ -191,6 +193,25 @@ class Kiwoom(QAxWidget):
 
             self.detail_account_info_event_loop.exit()
 
+        elif sRQName == "주식일봉차트조회요청":
+            code = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName, 0, "종목코드")
+            code = code.strip()
+            print("%s 일봉데이터 요청" % code)
+
+            cnt = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
+            print(cnt)
+
+            # 한번에 가져오는 함수
+            data = self.dynamicCall("GetCommDataEx(QString, QString)", sTrCode, sRQName)
+
+            # 한번 조회하면 600일치까지 일봉데이타를 받을 수 있다.
+
+            if sPrevNext == "10":
+                self.day_kiwoom_db(code=code, sPrevNext=sPrevNext)
+            else:
+                self.calculator_event_loop.exit()
+
+
 
 
     def signal_login_commConnect(self):
@@ -243,6 +264,21 @@ class Kiwoom(QAxWidget):
 
         self.detail_account_info_event_loop.exec_()
 
+    def day_kiwoom_db(self, code=None, date=None, sPrevNext="0"):
+        QTest.qWait(500)
+
+        self.dynamicCall("SetInputValue(QString, QString)", "종목코드", code)
+        self.dynamicCall("SetInputValue(QString, QString)", "수정주가구분", "1")
+        if date is not None:
+            self.dynamicCall("SetInputValue(QString, QString)", "기준일자", date)
+
+        self.dynamicCall("CommRqData(QString, QString, int, QString)",
+                         "주식일봉차트조회요청", "opt10081", sPrevNext, self.screen_calculation_stock)
+
+        # event loop로 calculator_fnc의 for loop를 멈춰야 함
+        self.calculator_event_loop.exec_()
+
+
     def get_code_list_by_market(self, market_code):
         code_list = self.dynamicCall("GetCodeListByMarket(QString)", market_code)
         code_list = code_list.split(";")[:-1]
@@ -250,11 +286,28 @@ class Kiwoom(QAxWidget):
         return code_list  # 리스트로 종목코드 저장
 
     def calculator_fnc(self):
+
+        """
+        [시장구분값]
+        0: 코스피
+        10: 코스닥
+        3: ELW
+        8: ETF
+        50: KONEX
+        4: 뮤추얼펀드
+        5: 신주인수권
+        6: 리츠
+        """
+
         code_list = self.get_code_list_by_market("10")
         print("코스닥 갯수 %s" % len(code_list))
 
 
+        for idx, code in enumerate(code_list):
+            self.dynamicCall("DisconnectRealData(QString)", self.screen_calculation_stock)  # 스크린번호 해제
+            print("%s / %s : KOSDAQ Stock Code : %s is updating..." % (idx + 1, len(code_list), code))
 
+            self.day_kiwoom_db(code=code)
 
 
 
